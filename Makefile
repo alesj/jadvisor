@@ -3,7 +3,7 @@ build/container: stage/jadvisor Dockerfile
 	touch build/container
 
 build/jadvisor: *.go */*.go
-	GOOS=linux GOARCH=amd64 godep go build -o build/jadvisor
+	godep go build -o build/jadvisor
 
 stage/jadvisor: build/jadvisor
 	mkdir -p stage
