@@ -125,6 +125,22 @@ func createTransport() (*http.Transport, error) {
 	return transport, nil
 }
 
+func newKubeClient(transport *http.Transport) *kube_client.Client {
+	if transport != nil {
+		return kube_client.NewOrDie(&kube_client.Config{
+			Host:     os.ExpandEnv(*argMaster),
+			Version:  *argMasterVersion,
+			Transport: transport,
+		})
+	} else {
+		return kube_client.NewOrDie(&kube_client.Config{
+			Host:     os.ExpandEnv(*argMaster),
+			Version:  *argMasterVersion,
+			Insecure: *argMasterInsecure,
+		})
+	}
+}
+
 func newKubeSource() (*KubeSource, error) {
 	if !(strings.HasPrefix(*argMaster, "http://") || strings.HasPrefix(*argMaster, "https://")) {
 		*argMaster = "http://" + *argMaster
@@ -138,12 +154,7 @@ func newKubeSource() (*KubeSource, error) {
 		return nil, err
 	}
 
-	kubeClient := kube_client.NewOrDie(&kube_client.Config{
-		Host:     os.ExpandEnv(*argMaster),
-		Version:  *argMasterVersion,
-		Insecure: *argMasterInsecure,
-		Transport: transport,
-	})
+	kubeClient := newKubeClient(transport)
 
 	return &KubeSource{
 		client:      kubeClient,
