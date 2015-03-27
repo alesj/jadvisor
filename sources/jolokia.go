@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"github.com/golang/glog"
 	"net/http"
-	"time"
 )
 
 type JolokiaRequestType string
@@ -86,9 +85,10 @@ func (self *JolokiaContainer) GetStats() (*StatsEntry, error) {
 	}
 
 	jolokiaStats := &StatsEntry{
-		Timestamp: time.Unix(0, int64(jolokiaResponses[0].Timestamp)*int64(time.Second)),
-		Stats:     jolokiaResponseStats,
 	}
+//		Timestamp: time.Unix(0, int64(jolokiaResponses[0].Timestamp)*int64(time.Second)),
+//		Stats:     jolokiaResponseStats,
+//	}
 
 	glog.V(2).Infof("Retrieved jolokia stats: %v", jolokiaStats)
 

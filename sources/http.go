@@ -1,9 +1,9 @@
 package sources
 
 import (
-	"encoding/json"
 	"net/http"
-)
+	"io/ioutil"
+	"github.com/golang/glog")
 
 func PostRequestAndGetValue(client *http.Client, req *http.Request, value interface{}) error {
 	response, err := client.Do(req)
@@ -11,11 +11,15 @@ func PostRequestAndGetValue(client *http.Client, req *http.Request, value interf
 		return err
 	}
 	defer response.Body.Close()
-	dec := json.NewDecoder(response.Body)
-	dec.UseNumber()
-	err = dec.Decode(value)
-	if err != nil {
-		return err
-	}
+
+	bytes, err := ioutil.ReadAll(response.Body)
+	glog.Info(string(bytes))
+
+//	dec := json.NewDecoder(response.Body)
+//	dec.UseNumber()
+//	err = dec.Decode(value)
+//	if err != nil {
+//		return err
+//	}
 	return nil
 }

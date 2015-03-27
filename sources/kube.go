@@ -48,7 +48,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 				ctr := Container(localContainer)
 				localPod.Containers = append(localPod.Containers, &ctr)
 				break
-			} else if port.Name == "mgmt" || port.ContainerPort == 9990 {
+			} else if port.Name == "mgmta" || port.ContainerPort == 99901 {
 				localContainer := newDmrContainer()
 				localContainer.Name = container.Name
 				localContainer.Host = env.GetHost(pod, port)
