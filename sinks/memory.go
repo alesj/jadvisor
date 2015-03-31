@@ -29,17 +29,14 @@ func (self *MemorySink) reapOldData() {
 	// TODO(vishh): Reap old data.
 }
 
-func (self *MemorySink) handlePods(pods []sources.Pod) {
+func (self *MemorySink) handlePods(pods []sources.Pod) error {
 	for _, pod := range pods {
 		for _, container := range pod.Containers {
 			ctn := *container
-
-			glog.Infof("Cnt --> %s", ctn.GetName())
-
 			stats, err := ctn.GetStats()
 
-			if err != nil {
-				glog.Errorf("Error getting container [%s] stats: %s", ctn.GetName(), err)
+			if (err != nil) {
+				return err
 			}
 
 			for mbean, stats := range stats.Stats {
@@ -47,6 +44,7 @@ func (self *MemorySink) handlePods(pods []sources.Pod) {
 			}
 		}
 	}
+	return nil
 }
 
 func (self *MemorySink) StoreData(input Data) error {

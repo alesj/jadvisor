@@ -7,7 +7,8 @@ import (
 	kube_api "github.com/GoogleCloudPlatform/kubernetes/pkg/api"
 	"github.com/GoogleCloudPlatform/kubernetes/pkg/types"
 	"encoding/json"
-	"strconv")
+	"strconv"
+)
 
 var (
 	argMaster         = flag.String("kubernetes_master", "https://localhost:8443", "Kubernetes master address")
@@ -91,3 +92,4 @@ func (strint *StringInt) String() string {
 func (strint StringInt) MarshalJSON() ([]byte, error) {
 	return json.Marshal(strint.Value)
 }
+

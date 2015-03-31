@@ -63,20 +63,20 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 }
 
 func (self *KubeSource) getPods() ([]Pod, error) {
-	pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	glog.V(1).Infof("got pods from api server %+v", pods)
-	out := make([]Pod, 0)
-	for _, pod := range pods.Items {
-		if pod.Status.Phase == kube_api.PodRunning {
-			pod := self.parsePod(&pod)
-			out = append(out, *pod)
-		}
-	}
+    pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
+    if err != nil {
+        return nil, err
+    }
+    glog.V(1).Infof("got pods from api server %+v", pods)
+    out := make([]Pod, 0)
+    for _, pod := range pods.Items {
+        if pod.Status.Phase == kube_api.PodRunning {
+            pod := self.parsePod(&pod)
+            out = append(out, *pod)
+        }
+    }
 
-	return out, nil
+    return out, nil
 }
 
 func (self *KubeSource) GetData() (ContainerData, error) {
