@@ -10,7 +10,10 @@ import (
 	kube_client "github.com/GoogleCloudPlatform/kubernetes/pkg/client"
 	kube_labels "github.com/GoogleCloudPlatform/kubernetes/pkg/labels"
 	"github.com/golang/glog"
-)
+	"net/http"
+	"crypto/tls"
+	"crypto/x509"
+	"io/ioutil")
 
 type KubeSource struct {
 	client      *kube_client.Client
@@ -27,7 +30,7 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 		Hostname:   pod.Status.Host,
 		Status:     string(pod.Status.Phase),
 		Labels:     make(map[string]string, 0),
-		Containers: make([]*Container, 0),
+		Containers: make([]Container, 0),
 	}
 	for key, value := range pod.Labels {
 		localPod.Labels[key] = value
@@ -42,16 +45,14 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 				localContainer.Name = container.Name
 				localContainer.Host = env.GetHost(pod, port)
 				localContainer.JolokiaPort = env.GetPort(pod, port)
-				ctr := Container(localContainer)
-				localPod.Containers = append(localPod.Containers, &ctr)
+				localPod.Containers = append(localPod.Containers, localContainer)
 				break
 			} else if port.Name == "mgmt" || port.ContainerPort == 9990 {
 				localContainer := newDmrContainer()
 				localContainer.Name = container.Name
 				localContainer.Host = env.GetHost(pod, port)
 				localContainer.DmrPort = env.GetPort(pod, port)
-				ctr := Container(localContainer)
-				localPod.Containers = append(localPod.Containers, &ctr)
+				localPod.Containers = append(localPod.Containers, localContainer)
 				break
 			}
 		}
@@ -62,20 +63,20 @@ func (self *KubeSource) parsePod(pod *kube_api.Pod) *Pod {
 }
 
 func (self *KubeSource) getPods() ([]Pod, error) {
-	pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
-	if err != nil {
-		return nil, err
-	}
-	glog.V(1).Infof("got pods from api server %+v", pods)
-	out := make([]Pod, 0)
-	for _, pod := range pods.Items {
-		if pod.Status.Phase == kube_api.PodRunning {
-			pod := self.parsePod(&pod)
-			out = append(out, *pod)
-		}
-	}
+    pods, err := self.client.Pods(kube_api.NamespaceAll).List(kube_labels.Everything())
+    if err != nil {
+        return nil, err
+    }
+    glog.V(1).Infof("got pods from api server %+v", pods)
+    out := make([]Pod, 0)
+    for _, pod := range pods.Items {
+        if pod.Status.Phase == kube_api.PodRunning {
+            pod := self.parsePod(&pod)
+            out = append(out, *pod)
+        }
+    }
 
-	return out, nil
+    return out, nil
 }
 
 func (self *KubeSource) GetData() (ContainerData, error) {
@@ -89,6 +90,55 @@ func (self *KubeSource) GetData() (ContainerData, error) {
 	return ContainerData{Pods: pods}, nil
 }
 
+func createTransport() (*http.Transport, error) {
+	// run as insecure
+	if *argMasterInsecure {
+		return nil, nil
+	}
+
+	// Load client cert
+	cert, err := tls.LoadX509KeyPair(*certFile, *keyFile)
+	if err != nil {
+		return nil, err
+	}
+
+	// Load CA cert
+	caCert, err := ioutil.ReadFile(*caFile)
+	if err != nil {
+		return nil, err
+	}
+
+	caCertPool := x509.NewCertPool()
+	caCertPool.AppendCertsFromPEM(caCert)
+
+	// Setup HTTPS client
+	tlsConfig := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		RootCAs:      caCertPool,
+	}
+	tlsConfig.BuildNameToCertificate()
+
+	transport := &http.Transport{TLSClientConfig: tlsConfig}
+
+	return transport, nil
+}
+
+func newKubeClient(transport *http.Transport) *kube_client.Client {
+	if transport != nil {
+		return kube_client.NewOrDie(&kube_client.Config{
+			Host:     os.ExpandEnv(*argMaster),
+			Version:  *argMasterVersion,
+			Transport: transport,
+		})
+	} else {
+		return kube_client.NewOrDie(&kube_client.Config{
+			Host:     os.ExpandEnv(*argMaster),
+			Version:  *argMasterVersion,
+			Insecure: *argMasterInsecure,
+		})
+	}
+}
+
 func newKubeSource() (*KubeSource, error) {
 	if !(strings.HasPrefix(*argMaster, "http://") || strings.HasPrefix(*argMaster, "https://")) {
 		*argMaster = "http://" + *argMaster
@@ -96,11 +146,13 @@ func newKubeSource() (*KubeSource, error) {
 	if len(*argMaster) == 0 {
 		return nil, fmt.Errorf("kubernetes_master flag not specified")
 	}
-	kubeClient := kube_client.NewOrDie(&kube_client.Config{
-		Host:     os.ExpandEnv(*argMaster),
-		Version:  *argMasterVersion,
-		Insecure: *argMasterInsecure,
-	})
+
+	transport, err := createTransport()
+	if err != nil {
+		return nil, err
+	}
+
+	kubeClient := newKubeClient(transport)
 
 	return &KubeSource{
 		client:      kubeClient,

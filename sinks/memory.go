@@ -35,7 +35,7 @@ func (self *MemorySink) handlePods(pods []sources.Pod) error {
 			ctn := *container
 			stats, err := ctn.GetStats()
 
-			if err != nil {
+			if (err != nil) {
 				return err
 			}
 
